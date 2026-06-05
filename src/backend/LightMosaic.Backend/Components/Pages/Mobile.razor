@@ -1,0 +1,178 @@
+@page "/"
+@page "/mobile"
+@layout MobileLayout
+@rendermode InteractiveServer
+@inject ICeremonyService Ceremony
+@inject IJSRuntime Js
+@implements IDisposable
+
+<PageTitle>点亮卓越之光</PageTitle>
+
+@if (_loading)
+{
+    <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Style="min-height: 50vh;">
+        <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+    </MudStack>
+}
+else if (_saved is not null)
+{
+    <MudPaper Class="pa-6 pa-sm-8" Elevation="4">
+        <MudStack AlignItems="AlignItems.Center" Spacing="3">
+            <MudIcon Icon="@Icons.Material.Filled.Star" Color="Color.Warning" Size="Size.Large" />
+            <MudText Typo="Typo.h5" Align="Align.Center">你已点亮第 @_saved.Index 束光</MudText>
+            <MudText Typo="Typo.body1" Align="Align.Center" Class="lm-text-muted">
+                请看向大屏，你的名字正在飞向星河
+            </MudText>
+            <MudChip T="string" Color="Color.Success" Variant="Variant.Filled" Size="Size.Medium">@_saved.Name</MudChip>
+        </MudStack>
+    </MudPaper>
+}
+else
+{
+    <MudStack Spacing="4" Class="mb-2">
+        <MudStack AlignItems="AlignItems.Center" Spacing="1">
+            <MudIcon Icon="@Icons.Material.Filled.NightsStay" Color="Color.Primary" Size="Size.Large" />
+            <MudText Typo="Typo.h4" Align="Align.Center">点亮卓越之光</MudText>
+            <MudText Typo="Typo.body2" Align="Align.Center" Class="lm-text-muted">
+                每一个名字，都会化作星河中的一束光
+            </MudText>
+        </MudStack>
+
+        <MudPaper Class="pa-5 pa-sm-6" Elevation="4">
+            <MudForm @ref="_form" @bind-IsValid="_formValid">
+                <MudTextField @bind-Value="_name"
+                              Label="请输入你的姓名"
+                              Placeholder="你的姓名"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              Immediate="true"
+                              MaxLength="32"
+                              FullWidth="true"
+                              OnKeyDown="OnSubmitKeyDown" />
+            </MudForm>
+
+            @if (!string.IsNullOrEmpty(_error))
+            {
+                <MudAlert Severity="Severity.Error" Class="mt-3" Dense="true" Variant="Variant.Outlined">@_error</MudAlert>
+            }
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       FullWidth="true"
+                       Size="Size.Large"
+                       Class="mt-5"
+                       Disabled="_submitting || !_formValid"
+                       OnClick="SubmitAsync">
+                @(_submitting ? "提交中" : "点亮我的光")
+            </MudButton>
+        </MudPaper>
+    </MudStack>
+}
+
+@code {
+    private const string StorageKey = "lightmosaic:lit";
+
+    private MudForm? _form;
+    private bool _formValid;
+    private bool _loading = true;
+    private bool _submitting;
+    private string _name = string.Empty;
+    private string? _error;
+    private SavedLit? _saved;
+    private string _ceremonySeed = string.Empty;
+
+    private sealed record SavedLit(string Name, int Index);
+
+    protected override void OnInitialized()
+    {
+        Ceremony.CeremonyReset += OnCeremonyReset;
+        _ceremonySeed = Ceremony.GetSnapshot().CeremonySeed;
+    }
+
+    public void Dispose() => Ceremony.CeremonyReset -= OnCeremonyReset;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        try
+        {
+            var raw = await Js.InvokeAsync<string?>("lightMosaicStorage.get", StorageKey);
+            if (!string.IsNullOrWhiteSpace(raw))
+            {
+                var parts = raw.Split('|', 3);
+                if (parts.Length == 3
+                    && parts[0] == _ceremonySeed
+                    && int.TryParse(parts[1], out var index))
+                {
+                    _saved = new SavedLit(parts[2], index);
+                }
+                else
+                {
+                    await Js.InvokeVoidAsync("lightMosaicStorage.remove", StorageKey);
+                }
+            }
+        }
+        catch
+        {
+            // localStorage unavailable
+        }
+
+        _loading = false;
+        StateHasChanged();
+    }
+
+    private async Task OnSubmitKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key is "Enter" or "NumpadEnter" && _formValid && !_submitting)
+            await SubmitAsync();
+    }
+
+    private async Task SubmitAsync()
+    {
+        _error = null;
+        _submitting = true;
+
+        try
+        {
+            var result = await Ceremony.LightUpAsync(_name, JoinSource.Mobile);
+            if (!result.Success)
+            {
+                _error = result.Error ?? "提交失败";
+                return;
+            }
+
+            var payload = result.Payload!;
+            _saved = new SavedLit(payload.Name, payload.Index);
+            await Js.InvokeVoidAsync(
+                "lightMosaicStorage.set",
+                StorageKey,
+                $"{_ceremonySeed}|{payload.Index}|{payload.Name}");
+        }
+        finally
+        {
+            _submitting = false;
+        }
+    }
+
+    private void OnCeremonyReset(string ceremonySeed) =>
+        _ = InvokeAsync(async () =>
+        {
+            _ceremonySeed = ceremonySeed;
+            _saved = null;
+            _name = string.Empty;
+            _error = null;
+
+            try
+            {
+                await Js.InvokeVoidAsync("lightMosaicStorage.remove", StorageKey);
+            }
+            catch
+            {
+                // The browser may be disconnected while the reset is broadcast.
+            }
+
+            StateHasChanged();
+        });
+}

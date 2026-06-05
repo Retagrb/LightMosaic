@@ -1,0 +1,4 @@
+/* Muted body copy — uses theme text-secondary, not Mud default pink Secondary */
+.lm-text-muted {
+    color: var(--mud-palette-text-secondary) !important;
+}

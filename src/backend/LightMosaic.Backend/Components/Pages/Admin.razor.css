@@ -1,0 +1,71 @@
+.admin-metric-grid .mud-grid-item {
+    display: flex;
+}
+
+.admin-metric-card {
+    width: 100%;
+}
+
+.admin-metric-card-content {
+    display: flex;
+    flex-direction: column;
+    height: 132px;
+    box-sizing: border-box;
+}
+
+.admin-metric-body {
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.admin-metric-hint {
+    display: block;
+    min-height: 1.25rem;
+    line-height: 1.25rem;
+}
+
+.admin-metric-footer {
+    flex: 0 0 auto;
+    margin-top: auto;
+    padding-top: 12px;
+    width: 100%;
+}
+
+.admin-metric-progress-spacer {
+    height: 4px;
+}
+
+.admin-actions-panel .admin-action-btn {
+    min-height: 40px;
+    padding-left: 16px;
+    padding-right: 16px;
+}
+
+/* Fallback when spin buttons still render from browser */
+.admin-settings-field input[type="number"]::-webkit-inner-spin-button,
+.admin-settings-field input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.admin-settings-field input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+.admin-join-url-field {
+    min-width: 200px;
+    max-width: 520px;
+}
+
+.admin-sim-panel .admin-sim-delay-field {
+    max-width: 280px;
+}
+
+.admin-sim-progress {
+    width: 100%;
+}
+
+.admin-sim-progress-bar {
+    height: 8px;
+}

@@ -1,0 +1,12 @@
+bin/
+obj/
+dist/
+node_modules/
+.vs/
+.vscode/
+.cursor/
+*.user
+*.suo
+.DS_Store
+
+/src/backend/LightMosaic.Backend/wwwroot/display/

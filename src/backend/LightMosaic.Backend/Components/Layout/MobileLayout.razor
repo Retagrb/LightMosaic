@@ -1,0 +1,27 @@
+@inherits LayoutComponentBase
+
+<MudThemeProvider Theme="@_theme" IsDarkMode="true" />
+<MudPopoverProvider />
+<MudSnackbarProvider />
+
+<MudContainer MaxWidth="MaxWidth.Small"
+              Class="py-6 py-sm-8 d-flex flex-column justify-center"
+              Style="min-height: 100dvh; box-sizing: border-box;">
+    @Body
+</MudContainer>
+
+@code {
+    private readonly MudTheme _theme = new()
+    {
+        PaletteDark = new PaletteDark
+        {
+            Primary = "#8f84ff",
+            Secondary = "#7a7694",
+            Info = "#6ba3ff",
+            Background = "#0b1028",
+            Surface = "#141a3a",
+            TextPrimary = "#e8e6f2",
+            TextSecondary = "#9a96b0",
+        },
+    };
+}

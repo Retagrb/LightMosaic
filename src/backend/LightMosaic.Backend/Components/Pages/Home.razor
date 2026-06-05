@@ -1,0 +1,53 @@
+@page "/home"
+
+<PageTitle>LightMosaic</PageTitle>
+
+<MudStack Spacing="1" Class="mb-6">
+    <MudText Typo="Typo.h4">LightMosaic</MudText>
+    <MudText Typo="Typo.body1" Class="lm-text-muted">Graduation starlight ceremony — service entry points</MudText>
+</MudStack>
+
+<MudGrid Spacing="3">
+    <MudItem xs="12" sm="4">
+        <MudCard Outlined="true">
+            <MudCardContent>
+                <MudStack Spacing="2">
+                    <MudIcon Icon="@Icons.Material.Filled.Tv" Color="Color.Primary" />
+                    <MudText Typo="Typo.h6">Display</MudText>
+                    <MudText Typo="Typo.body2" Class="lm-text-muted">Large-screen particle show for the venue</MudText>
+                </MudStack>
+            </MudCardContent>
+            <MudCardActions>
+                <MudButton Href="/display" Variant="Variant.Filled" Color="Color.Primary">Open</MudButton>
+            </MudCardActions>
+        </MudCard>
+    </MudItem>
+    <MudItem xs="12" sm="4">
+        <MudCard Outlined="true">
+            <MudCardContent>
+                <MudStack Spacing="2">
+                    <MudIcon Icon="@Icons.Material.Filled.PhoneAndroid" Color="Color.Info" />
+                    <MudText Typo="Typo.h6">Mobile</MudText>
+                    <MudText Typo="Typo.body2" Class="lm-text-muted">Graduates scan QR and light their star</MudText>
+                </MudStack>
+            </MudCardContent>
+            <MudCardActions>
+                <MudButton Href="/mobile" Variant="Variant.Filled" Color="Color.Info">Open</MudButton>
+            </MudCardActions>
+        </MudCard>
+    </MudItem>
+    <MudItem xs="12" sm="4">
+        <MudCard Outlined="true">
+            <MudCardContent>
+                <MudStack Spacing="2">
+                    <MudIcon Icon="@Icons.Material.Filled.AdminPanelSettings" Color="Color.Tertiary" />
+                    <MudText Typo="Typo.h6">Admin</MudText>
+                    <MudText Typo="Typo.body2" Class="lm-text-muted">Control flow, config, and debug data</MudText>
+                </MudStack>
+            </MudCardContent>
+            <MudCardActions>
+                <MudButton Href="/admin" Variant="Variant.Filled" Color="Color.Tertiary">Open</MudButton>
+            </MudCardActions>
+        </MudCard>
+    </MudItem>
+</MudGrid>

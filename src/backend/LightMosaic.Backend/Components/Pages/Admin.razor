@@ -1,0 +1,492 @@
+@page "/admin"
+@rendermode InteractiveServer
+@inject ICeremonyService Ceremony
+@inject GraduateSimulatorService Simulator
+@inject AdminSessionService AdminSession
+@inject ISnackbar Snackbar
+@inject IJSRuntime Js
+@implements IDisposable
+
+<PageTitle>Ceremony Admin</PageTitle>
+
+@if (!_authenticated)
+{
+    <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Style="min-height: 65vh;">
+        <MudPaper Class="pa-8" Elevation="4" Style="width: 100%; max-width: 400px;">
+            <MudStack AlignItems="AlignItems.Center" Spacing="2" Class="mb-5">
+                <MudAvatar Color="Color.Primary" Variant="Variant.Filled" Size="Size.Large">
+                    <MudIcon Icon="@Icons.Material.Filled.AdminPanelSettings" />
+                </MudAvatar>
+                <MudText Typo="Typo.h5">Ceremony Admin</MudText>
+                <MudText Typo="Typo.body2" Align="Align.Center">Sign in to control the graduation display</MudText>
+            </MudStack>
+            <form @onsubmit="OnLoginSubmit" @onsubmit:preventDefault="true">
+                <MudTextField @bind-Value="_password"
+                              Label="Password"
+                              Variant="Variant.Outlined"
+                              InputType="@_passwordInputType"
+                              Adornment="Adornment.End"
+                              AdornmentIcon="@_passwordVisibilityIcon"
+                              OnAdornmentClick="TogglePasswordVisibility"
+                              AdornmentAriaLabel="Show password"
+                              FullWidth="true"
+                              Immediate="true"
+                              Required="true" />
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           ButtonType="ButtonType.Submit"
+                           FullWidth="true"
+                           Size="Size.Large"
+                           Class="mt-4">
+                    Sign in
+                </MudButton>
+            </form>
+        </MudPaper>
+    </MudStack>
+}
+else
+{
+    <MudStack Spacing="4">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Wrap="Wrap.Wrap" Spacing="2">
+            <div>
+                <MudText Typo="Typo.h5">Ceremony control</MudText>
+                <MudText Typo="Typo.body2" Class="lm-text-muted">Live dashboard</MudText>
+            </div>
+            <MudButtonGroup Variant="Variant.Outlined" Size="Size.Small">
+                <MudButton StartIcon="@Icons.Material.Filled.Refresh" OnClick="Refresh">Refresh</MudButton>
+                <MudButton StartIcon="@Icons.Material.Filled.Logout" OnClick="Logout">Sign out</MudButton>
+            </MudButtonGroup>
+        </MudStack>
+
+        <MudGrid Spacing="3" Class="admin-metric-grid">
+            @foreach (var metric in Metrics())
+            {
+                <MudItem xs="12" sm="6" Class="d-flex">
+                    <MudCard Elevation="2" Class="admin-metric-card flex-grow-1">
+                        <MudCardContent Class="admin-metric-card-content">
+                            <MudStack Row="true" AlignItems="AlignItems.Start" Justify="Justify.SpaceBetween">
+                                <MudStack Spacing="0">
+                                    <MudText Typo="Typo.caption">@metric.Label</MudText>
+                                    <MudText Typo="Typo.h5" Class="mt-1">@metric.Value</MudText>
+                                    <MudText Typo="Typo.caption" Class="admin-metric-hint mt-1">@(string.IsNullOrEmpty(metric.Hint) ? "\u00a0" : metric.Hint)</MudText>
+                                </MudStack>
+                                <MudIcon Icon="@metric.Icon" Color="@metric.IconColor" Size="Size.Medium" />
+                            </MudStack>
+                        </MudCardContent>
+                    </MudCard>
+                </MudItem>
+            }
+        </MudGrid>
+
+        <MudPaper Class="pa-3 pa-sm-4" Outlined="true">
+            <form @onsubmit="OnJoinUrlSubmit" @onsubmit:preventDefault="true">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap" Spacing="2">
+                    <MudIcon Icon="@Icons.Material.Filled.Link" Size="Size.Small" />
+                    <MudText Typo="Typo.subtitle2" Class="mr-1">Join URL</MudText>
+                    <MudTextField @bind-Value="_joinUrl"
+                                  Variant="Variant.Text"
+                                  Margin="Margin.Dense"
+                                  Immediate="true"
+                                  Placeholder="http://192.168.1.10:5000/mobile"
+                                  Class="flex-grow-1 admin-join-url-field" />
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Primary"
+                               Size="Size.Small"
+                               ButtonType="ButtonType.Submit"
+                               Disabled="_joinUrlApplying">
+                        Apply
+                    </MudButton>
+                    <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
+                                   Size="Size.Small"
+                                   title="Copy URL"
+                                   OnClick="CopyJoinUrl" />
+                    <MudButton Href="@_joinUrl"
+                               Target="_blank"
+                               Variant="Variant.Text"
+                               Size="Size.Small"
+                               StartIcon="@Icons.Material.Filled.OpenInNew">
+                        Preview
+                    </MudButton>
+                </MudStack>
+            </form>
+        </MudPaper>
+
+        <MudTabs Elevation="2"
+                 Rounded="true"
+                 Outlined="true"
+                 Border="true"
+                 ApplyEffectsToContainer="true">
+            <MudTabPanel Text="Control" Icon="@Icons.Material.Filled.Tune" PanelClass="pa-4">
+                <MudText Typo="Typo.subtitle1" Class="mb-2">Ceremony actions</MudText>
+                <MudText Typo="Typo.body2" Class="lm-text-muted mb-4">
+                    Display animation settings live in the frontend <code>displayConfig</code>.
+                </MudText>
+
+                <MudPaper Outlined="true" Class="pa-5 pa-sm-6 admin-actions-panel">
+                    <MudStack Spacing="5">
+                        <MudStack Spacing="3">
+                            <MudText Typo="Typo.caption" Class="lm-text-muted">Progress</MudText>
+                            <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="3">
+                                <MudButton Variant="Variant.Outlined"
+                                           Color="Color.Primary"
+                                           Class="admin-action-btn"
+                                           StartIcon="@Icons.Material.Filled.AutoFixHigh"
+                                           OnClick="ForceComplete">
+                                    Force complete
+                                </MudButton>
+                                <MudButton Variant="Variant.Outlined"
+                                           Color="Color.Primary"
+                                           Class="admin-action-btn"
+                                           StartIcon="@Icons.Material.Filled.Transform"
+                                           OnClick="EnterFinal">
+                                    Enter final reveal
+                                </MudButton>
+                            </MudStack>
+                        </MudStack>
+
+                        <MudStack Spacing="3">
+                            <MudText Typo="Typo.caption" Class="lm-text-muted">Destructive · confirmation required</MudText>
+                            <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="3">
+                                <MudButton Variant="Variant.Outlined"
+                                           Color="Color.Error"
+                                           Class="admin-action-btn"
+                                           StartIcon="@Icons.Material.Filled.RestartAlt"
+                                           OnClick="ConfirmReset">
+                                    Reset ceremony
+                                </MudButton>
+                                <MudButton Variant="Variant.Outlined"
+                                           Color="Color.Error"
+                                           Class="admin-action-btn"
+                                           StartIcon="@Icons.Material.Filled.DeleteSweep"
+                                           OnClick="ConfirmClear">
+                                    Clear graduates
+                                </MudButton>
+                            </MudStack>
+                        </MudStack>
+                    </MudStack>
+                </MudPaper>
+            </MudTabPanel>
+
+            <MudTabPanel Text="Simulation" Icon="@Icons.Material.Filled.SmartToy" PanelClass="pa-5">
+                <MudStack Spacing="3">
+                    <div>
+                        <MudText Typo="Typo.subtitle1">Graduate click simulation</MudText>
+                        <MudText Typo="Typo.body2" Class="lm-text-muted mt-1">
+                            Fills up to <strong>@SimTargetCount</strong> graduates (matches display <code>expectedCount</code>).
+                        </MudText>
+                    </div>
+
+                    <MudPaper Outlined="true" Class="pa-4 pa-sm-5 admin-sim-panel">
+                        <MudStack Spacing="4">
+                            <MudNumericField @bind-Value="_simDelayMs"
+                                             Label="Delay between clicks (ms)"
+                                             Min="50"
+                                             Max="10000"
+                                             Step="50"
+                                             Variant="Variant.Outlined"
+                                             Margin="Margin.Dense"
+                                             HideSpinButtons="true"
+                                             Disabled="_simStatus.IsRunning"
+                                             Class="admin-sim-delay-field" />
+
+                            <div class="admin-sim-progress">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-2">
+                                    <MudText Typo="Typo.body2">Lit</MudText>
+                                    <MudText Typo="Typo.body2">
+                                        <strong>@_snap.LitCount</strong> / @SimTargetCount
+                                    </MudText>
+                                </MudStack>
+                                <MudProgressLinear Value="@SimProgress()"
+                                                   Color="Color.Primary"
+                                                   Rounded="true"
+                                                   Size="Size.Medium"
+                                                   Class="admin-sim-progress-bar" />
+                                @if (_simStatus.IsRunning && _simStatus.Planned > 0)
+                                {
+                                    <MudText Typo="Typo.caption" Class="lm-text-muted mt-2">
+                                        This run: @_simStatus.Completed / @_simStatus.Planned
+                                        @if (_simStatus.Failed > 0)
+                                        {
+                                            <span> · @_simStatus.Failed failed</span>
+                                        }
+                                    </MudText>
+                                }
+                                @if (!string.IsNullOrEmpty(_simStatus.LastName))
+                                {
+                                    <MudText Typo="Typo.caption" Class="lm-text-muted mt-1">
+                                        Last: @_simStatus.LastName
+                                        @if (!string.IsNullOrEmpty(_simStatus.LastError))
+                                        {
+                                            <span> — @_simStatus.LastError</span>
+                                        }
+                                    </MudText>
+                                }
+                            </div>
+
+                            <MudDivider Class="my-1" />
+
+                            <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="2">
+                                <MudButton Variant="Variant.Filled"
+                                           Color="Color.Primary"
+                                           StartIcon="@Icons.Material.Filled.PlayArrow"
+                                           Disabled="_simStatus.IsRunning || SimRemaining() <= 0"
+                                           OnClick="StartSimulation">
+                                    Start simulation
+                                </MudButton>
+                                <MudButton Variant="Variant.Outlined"
+                                           Color="Color.Warning"
+                                           StartIcon="@Icons.Material.Filled.Stop"
+                                           Disabled="!_simStatus.IsRunning"
+                                           OnClick="StopSimulation">
+                                    Stop
+                                </MudButton>
+                            </MudStack>
+                        </MudStack>
+                    </MudPaper>
+                </MudStack>
+            </MudTabPanel>
+
+            <MudTabPanel Text="Activity" Icon="@Icons.Material.Filled.History" BadgeData="@_snap.LitCount" BadgeColor="Color.Primary" PanelClass="pa-4">
+                @if (!RecentRows().Any())
+                {
+                    <MudStack AlignItems="AlignItems.Center" Class="py-8">
+                        <MudIcon Icon="@Icons.Material.Filled.Inbox" Size="Size.Large" Class="lm-text-muted" />
+                        <MudText Typo="Typo.body1" Class="mt-2">No submissions yet</MudText>
+                        <MudText Typo="Typo.body2" Class="lm-text-muted">Graduate names will appear here after they light up on mobile</MudText>
+                    </MudStack>
+                }
+                else
+                {
+                    <MudTable Items="@RecentRows()"
+                              Dense="true"
+                              Hover="true"
+                              Striped="true"
+                              Breakpoint="Breakpoint.Sm"
+                              FixedHeader="true"
+                              Height="320px">
+                        <HeaderContent>
+                            <MudTh>#</MudTh>
+                            <MudTh>Name</MudTh>
+                            <MudTh>Source</MudTh>
+                            <MudTh Style="text-align: right;">Time</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="#">@context.Index</MudTd>
+                            <MudTd DataLabel="Name">
+                                <MudText Typo="Typo.body2">@context.Name</MudText>
+                            </MudTd>
+                            <MudTd DataLabel="Source">@context.Source</MudTd>
+                            <MudTd DataLabel="Time" Style="text-align: right;">
+                                <MudText Typo="Typo.caption">
+                                    @DateTimeOffset.FromUnixTimeMilliseconds(context.Timestamp).LocalDateTime.ToString("HH:mm:ss")
+                                </MudText>
+                            </MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                }
+            </MudTabPanel>
+        </MudTabs>
+    </MudStack>
+}
+
+@code {
+  private const int SimTargetCount = 64;
+
+    private bool _authenticated;
+    private string _password = string.Empty;
+    private InputType _passwordInputType = InputType.Password;
+    private string _passwordVisibilityIcon = Icons.Material.Filled.VisibilityOff;
+    private string? _token;
+    private CeremonySnapshot _snap = null!;
+
+    private string _joinUrl = string.Empty;
+    private bool _joinUrlApplying;
+    private int _simDelayMs = 600;
+    private SimulatorStatus _simStatus = new(false, 0, 0, 0, 0, null, null);
+
+    private sealed record MetricCard(string Label, string Value, string? Hint, string Icon, Color IconColor);
+
+    protected override void OnInitialized()
+    {
+        Simulator.StateChanged += OnSimulatorStateChanged;
+        _simStatus = Simulator.GetStatus();
+        Refresh();
+    }
+
+    public void Dispose() => Simulator.StateChanged -= OnSimulatorStateChanged;
+
+    private void OnSimulatorStateChanged() =>
+        _ = InvokeAsync(() =>
+        {
+            _simStatus = Simulator.GetStatus();
+            Refresh();
+            StateHasChanged();
+        });
+
+    private int SimRemaining() => Math.Max(0, SimTargetCount - _snap.LitCount);
+
+    private double SimProgress() =>
+        SimTargetCount <= 0 ? 0 : 100.0 * _snap.LitCount / SimTargetCount;
+
+    private IEnumerable<MetricCard> Metrics() =>
+    [
+        new("Stage", _snap.Stage.ToString(), $"sync v{_snap.Version}", Icons.Material.Outlined.Flag, StageChipColor(_snap.Stage)),
+        new("Lit", $"{_snap.LitCount}", "graduates registered", Icons.Material.Outlined.Groups, Color.Primary),
+    ];
+
+    private void Refresh()
+    {
+        _snap = Ceremony.GetSnapshot();
+        _joinUrl = _snap.JoinUrl;
+    }
+
+    private static Color StageChipColor(CeremonyStage stage) => stage switch
+    {
+        CeremonyStage.Idle => Color.Default,
+        CeremonyStage.Collecting => Color.Primary,
+        CeremonyStage.FinalTransform => Color.Info,
+        CeremonyStage.Completed => Color.Success,
+        _ => Color.Default,
+    };
+
+    private IEnumerable<GraduateJoinedPayload> RecentRows() =>
+        _snap.RecentGraduates.Reverse().Take(30);
+
+    private void OnLoginSubmit() => Login();
+
+    private void TogglePasswordVisibility()
+    {
+        if (_passwordInputType == InputType.Password)
+        {
+            _passwordInputType = InputType.Text;
+            _passwordVisibilityIcon = Icons.Material.Filled.Visibility;
+        }
+        else
+        {
+            _passwordInputType = InputType.Password;
+            _passwordVisibilityIcon = Icons.Material.Filled.VisibilityOff;
+        }
+    }
+
+    private void Login()
+    {
+        if (AdminSession.TryLogin(_password, out var token))
+        {
+            _token = token;
+            _authenticated = true;
+            _password = string.Empty;
+            Refresh();
+        }
+        else
+            Snackbar.Add("Invalid password", Severity.Error);
+    }
+
+    private void Logout()
+    {
+        AdminSession.Logout(_token);
+        _authenticated = false;
+        _token = null;
+    }
+
+    private void OnJoinUrlSubmit() => _ = ApplyJoinUrlAsync();
+
+    private async Task ApplyJoinUrlAsync()
+    {
+        _joinUrlApplying = true;
+        try
+        {
+            var (ok, error) = await Ceremony.SetJoinUrlAsync(_joinUrl);
+            if (!ok)
+            {
+                Snackbar.Add(error ?? "Invalid URL", Severity.Error);
+                return;
+            }
+
+            Refresh();
+            Snackbar.Add("Join URL applied. QR Code will update", Severity.Success);
+        }
+        finally
+        {
+            _joinUrlApplying = false;
+        }
+    }
+
+    private async Task CopyJoinUrl()
+    {
+        try
+        {
+            await Js.InvokeVoidAsync("navigator.clipboard.writeText", _joinUrl);
+            Snackbar.Add("Join URL copied", Severity.Success);
+        }
+        catch
+        {
+            Snackbar.Add(_joinUrl, Severity.Info);
+        }
+    }
+
+    private async Task ConfirmReset()
+    {
+        if (await Js.InvokeAsync<bool>("confirm", "Reset the entire ceremony? This clears stage and graduates on the display."))
+            await Reset();
+    }
+
+    private async Task ConfirmClear()
+    {
+        if (await Js.InvokeAsync<bool>("confirm", "Clear all graduate records?"))
+            await ClearGraduates();
+    }
+
+    private async Task ForceComplete()
+    {
+        await Ceremony.ForceCompleteAsync();
+        Refresh();
+        Snackbar.Add("Force complete triggered", Severity.Info);
+    }
+
+    private async Task EnterFinal()
+    {
+        await Ceremony.EnterFinalAsync();
+        Refresh();
+        Snackbar.Add("Final transform started", Severity.Info);
+    }
+
+    private async Task Reset()
+    {
+        await Ceremony.ResetAsync();
+        Refresh();
+        Snackbar.Add("Ceremony reset", Severity.Warning);
+    }
+
+    private async Task ClearGraduates()
+    {
+        await Ceremony.ClearGraduatesAsync();
+        Refresh();
+        Snackbar.Add("Graduate data cleared", Severity.Warning);
+    }
+
+    private void StartSimulation()
+    {
+        Refresh();
+        var remaining = SimRemaining();
+        if (remaining <= 0)
+        {
+            Snackbar.Add("Lit count already matches simulation target", Severity.Warning);
+            return;
+        }
+
+        if (_snap.Stage == CeremonyStage.Idle)
+            Snackbar.Add("Tip: first click will move stage to Collecting.", Severity.Info);
+
+        var started = Simulator.Start(_simDelayMs, SimTargetCount, _snap.LitCount);
+        _simStatus = Simulator.GetStatus();
+        if (started > 0)
+            Snackbar.Add($"Simulating {started} clicks", Severity.Info);
+    }
+
+    private void StopSimulation()
+    {
+        Simulator.Stop();
+        _simStatus = Simulator.GetStatus();
+        Snackbar.Add("Simulation stopped", Severity.Info);
+    }
+}
