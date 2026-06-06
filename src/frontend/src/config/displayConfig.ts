@@ -7,7 +7,7 @@ export const displayConfig = {
   alphaThreshold: 48,
   /** Graduate queue slots (released when a comet actually starts flying). */
   nameMaxConcurrent: 24,
-  /** Max simultaneous name comets on screen. */
+  /** Max simultaneous name comets on screen. */ 
   cometMaxInFlight: 8,
   /**
    * Load scale for pipeline pressure (1 - e^(-load/s)).
